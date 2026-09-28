@@ -40,6 +40,13 @@ Julia installs CairoMakie and the other dependencies automatically; the first
 import may take a few minutes. This is a standalone package and does not require
 ITensorMPSDraw or this development workspace.
 
+Julia distinguishes dependencies used inside a package from packages you import
+directly. For the examples below, add these to your environment if needed:
+
+```julia
+Pkg.add(["ITensors", "ITensorMPS", "CairoMakie", "LaTeXStrings"])
+```
+
 To install this folder, including after copying it to another computer:
 
 ```julia
