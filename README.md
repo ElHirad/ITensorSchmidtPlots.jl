@@ -9,25 +9,22 @@ are native Makie recipes: use normal Makie axes, figures, attributes, layouts,
 themes, legends, and colorbars. Numerical spectrum extraction and truncation
 analysis are separate from plotting, and accept precomputed spectra too.
 
-Two paper-inspired presets are included:
-
-| Preset | Layout | Color scale | Reference |
-| --- | --- | --- | --- |
-| `:paper2026` | Bond horizontally; Schmidt index on a log₂ vertical axis | Inferno, default 10⁻⁶ to 1 | [Esmaeili et al., Figure 6](https://arxiv.org/abs/2608.28869) |
-| `:paper2022` | Bond vertically, increasing downward; Schmidt index on a logarithmic horizontal axis with powers of 4 | Discrete red-to-blue, default 1 to 10⁻¹⁶ | [Gourianov et al., Supplementary Figure 1](https://arxiv.org/abs/2106.05782) |
-
-The presets reproduce the visual conventions, not the papers' underlying data.
+The sole preset, `:paper2026`, follows [Esmaeili et al., Figure 6](https://arxiv.org/abs/2608.28869):
+bonds horizontally, Schmidt index on a log₂ vertical axis, and Inferno colors
+from 10⁻⁶ to 1. The preset reproduces the visual conventions, not the paper's
+underlying data. Native Makie recipes still support custom orientations and styling.
 No Python, external LaTeX installation, display server, or GPU is required.
 PDF labels and contours are vectors by default; `rasterize=true` can reduce the
 size of very large heatmaps while preserving vector text and contours.
-The presets and examples use bundled Computer Modern fonts (the New Computer
+The preset and examples use bundled Computer Modern fonts (the New Computer
 Modern family), with LaTeX-rendered mathematical symbols and labels. The examples have no figure
 titles, panel titles, or explanatory captions; only axes, colorbars, and cutoff
 legends are included. A title is added only if you explicitly pass `title=...`.
 
 ## Installation
 
-Requires Julia 1.10 or later. Install directly from the public GitHub repository;
+Requires Julia 1.10 or later; use the latest patch of a maintained stable or LTS
+Julia release. Install directly from the public GitHub repository;
 the package is **not registered in General**:
 
 ```julia
@@ -35,7 +32,7 @@ using Pkg
 Pkg.add(url="https://github.com/ElHirad/ITensorSchmidtPlots.jl")
 ```
 
-For the reproducible initial release, add `rev="v0.1.0"` to that call.
+For the current release, add `rev="v0.2.0"` to that call.
 Julia installs CairoMakie and the other dependencies automatically; the first
 import may take a few minutes. This is a standalone package and does not require
 ITensorMPSDraw or this development workspace.
@@ -65,9 +62,6 @@ psi = random_mps(sites; linkdims=32)
 data = schmidt_spectrum(psi)  # Does not change psi
 save_schmidt("schmidt.pdf", data;
     cutoffs=[1e-2, 1e-3, 1e-4, 1e-5])
-
-save_schmidt("schmidt_vertical.pdf", data;
-    style=:paper2022, cutoffs=[1e-4])
 ```
 
 `save_schmidt("schmidt.pdf", psi)` also works. Files are written to your current
@@ -130,7 +124,7 @@ compressed MPS describe that compressed state only.
 - Exact zeros and unavailable values are blank. Positive values below the color
   floor use the lowest color; no positive tail values are silently removed.
 - Tiny nonzero coefficients near machine precision can be numerical roundoff.
-  A default 10⁻¹⁶ color floor does not establish physical accuracy to 16 digits.
+  The color floor does not establish physical accuracy at that scale.
 - A `maxdim` cap that misses a tolerance is marked “cap limited” in the legend.
 
 ## Native Makie interface and customization
@@ -197,7 +191,7 @@ Makie behavior: update ticks or rebuild a legend when its labels need to change.
 See [examples/native_makie.jl](examples/native_makie.jl) for a complete runnable
 example, including a separate legend and five independently styled curves.
 
-## Paper presets and multi-panel figures
+## Paper preset and multi-panel figures
 
 `plot_schmidt` (with an underscore), `plot_schmidt!`, and `save_schmidt` are
 convenience layout helpers with their own documented keywords. Use the native
@@ -216,7 +210,7 @@ save("custom.pdf", fig; pt_per_unit=1)
 
 fig = Figure(size=(1100, 500), fonts=theme_latexfonts().fonts)
 plot_schmidt!(fig[1,1], data; style=:paper2026)
-plot_schmidt!(fig[1,2], data; style=:paper2022, cutoffs=[1e-4])
+plot_schmidt!(fig[1,2], data; style=:paper2026, cutoffs=[1e-4], maxdim=32)
 save("comparison.pdf", fig; pt_per_unit=1)
 ```
 
@@ -225,6 +219,19 @@ further Makie customization. These preset helpers support at most four cutoff cu
 the four black line styles in the reference. Empty `cutoffs=[]` hides contours.
 `SchmidtSpectrum(vectors; normalized=true)` also accepts precomputed, sorted,
 nonnegative spectra; the constructor validates and copies the data.
+
+## Security
+
+See the [security policy](SECURITY.md) and [dated review](docs/SECURITY_REVIEW.md)
+for the scope, dependency findings, and remaining limitations. Version 0.2.0
+requires updated Makie/CairoMakie and enforces patched minimum versions of
+FFmpeg, Giflib, and HarfBuzz through Julia's resolver. These libraries were
+already indirect dependencies; they are listed directly to prevent older,
+affected versions from being selected in an existing environment.
+
+Update your Julia runtime separately from package dependencies. The package
+performs local calculations and PDF output; it is not a sandbox for untrusted
+Julia code, fonts, or arbitrary uploads.
 
 ## Three reproducible examples
 
@@ -236,14 +243,14 @@ julia --project=. examples/make_examples.jl
 julia --project=. -e 'using Pkg; Pkg.test()'
 ```
 
-The generator writes three PDFs to `output/pdf/`, each with both reference
-layouts, plus CSVs of all coefficients and truncation ranks, and `VALIDATION.md`.
+The generator writes three PDFs to `output/pdf/`, each using the 2026 preset,
+plus CSVs of all coefficients and truncation ranks, and `VALIDATION.md`.
 
 1. **Nonuniform entangled pairs:** seven mirrored pairs over 14 qubits. Every
    coefficient can be calculated analytically as a product of pair coefficients.
 2. **Synthetic multiscale field:** a 128 × 128 field containing Fourier modes
    and a localized oscillation, encoded using interleaved coarse-to-fine x/y bits.
-   This is not DNS data from either paper.
+   This is not DNS data from the reference paper.
 3. **Complex random state:** a seeded, normalized Gaussian state over 14 qubits,
    which provides a broad, highly entangled comparison.
 
@@ -267,9 +274,8 @@ legends, and reactive updates to data and plot attributes.
 
 ## License and references
 
-MIT licensed. The source references motivate the visual styles; no paper figures
+MIT licensed. The source reference motivates the visual style; no paper figures
 or third-party datasets are redistributed with the package.
 
-- [Gourianov et al., *A Quantum Inspired Approach to Exploit Turbulence Structures*, Supplementary Figure 1](https://arxiv.org/abs/2106.05782).
 - [Esmaeili et al., *A priori Assessment of Tensor-Network Encoding for Isotropic Turbulent Flows*, Figure 6](https://arxiv.org/abs/2608.28869).
 - [ITensorMPS documentation: MPS and MPO examples](https://docs.itensor.org/ITensorMPS/stable/examples/MPSandMPO.html).

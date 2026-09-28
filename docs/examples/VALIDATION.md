@@ -1,6 +1,6 @@
 # Numerical validation
 
-Generated with Julia 1.11.5, ITensors 0.9.30, ITensorMPS 0.3.45, CairoMakie 0.15.13.
+Generated with Julia 1.11.5, ITensors 0.9.32, ITensorMPS 0.3.45, CairoMakie 0.15.15.
 Every internal bond is compared with a direct dense SVD of the original vector.
 Truncation ranks are independently checked against dense-SVD squared tails.
 
@@ -12,4 +12,4 @@ Truncation ranks are independently checked against dense-SVD squared tails.
 
 The first example additionally agrees with the analytic product of the seven pair spectra.
 Values are normalized singular values (not squared probabilities). Tests also cover complex amplitudes, QN blocks, gauge changes, input preservation, zero states, rank caps, and PDF export.
-These are synthetic examples, not reconstructions of the papers' DNS data.
+These are synthetic examples, not reconstructions of the paper's DNS data.

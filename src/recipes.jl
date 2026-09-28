@@ -68,7 +68,7 @@ Makie.extract_colormap(p::SchmidtPlot) = Makie.extract_colormap(first(p.plots))
 function Makie.preferred_axis_attributes(::Type{<:Axis}, p::SchmidtPlot)
     horizontal = _horizontal(p.orientation[])
     n = length(p.spectrum[].values)
-    ranks = _rankticks(maximum(length,p.spectrum[].values), horizontal ? 2 : 4)
+    ranks = _rankticks(maximum(length,p.spectrum[].values), 2)
     bonds = (collect(1:n), LaTeXString.(string.(1:n)))
     fonts = theme_latexfonts().fonts
     common = (; xgridvisible=false, ygridvisible=false,
@@ -77,7 +77,7 @@ function Makie.preferred_axis_attributes(::Type{<:Axis}, p::SchmidtPlot)
     return horizontal ?
         (; common..., xlabel=L"\mathrm{Bond}\ k", ylabel=L"\mathrm{Schmidt\ index}\ j",
             yscale=log2, xticks=bonds, yticks=ranks) :
-        (; common..., xlabel=L"\mathrm{Schmidt\ index}\ \alpha", ylabel=L"\mathrm{Bond}\ n",
+        (; common..., xlabel=L"\mathrm{Schmidt\ index}\ j", ylabel=L"\mathrm{Bond}\ k",
             xscale=log2, yreversed=true, xaxisposition=:top, xticks=ranks, yticks=bonds)
 end
 

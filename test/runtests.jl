@@ -98,15 +98,15 @@ end
 @testset "PDF export and plotting edge cases" begin
     data=SchmidtSpectrum([[1.],[0.9,sqrt(0.19)],[1.]];normalized=true)
     mktempdir() do dir
-        for style in (:paper2022,:paper2026)
-            path=joinpath(dir,"$style.pdf")
-            @test save_schmidt(path,data;style) == abspath(path)
-            @test read(path,String)[1:4] == "%PDF"
-            @test filesize(path) > 1000
-            fig=Figure()
-            plotted=plot_schmidt!(fig[1,1],data;style)
-            @test plotted.axis.yreversed[] == (style == :paper2022)
-        end
+        path=joinpath(dir,"paper2026.pdf")
+        @test save_schmidt(path,data;style=:paper2026) == abspath(path)
+        @test read(path,String)[1:4] == "%PDF"
+        @test filesize(path) > 1000
+        fig=Figure()
+        plotted=plot_schmidt!(fig[1,1],data;style=:paper2026)
+        @test !plotted.axis.yreversed[]
+        @test_throws ArgumentError save_schmidt(joinpath(dir,"removed.pdf"),data;style=:paper2022)
+        @test !isfile(joinpath(dir,"removed.pdf"))
         @test_throws ArgumentError save_schmidt(joinpath(dir,"bad.svg"),data)
     end
     @test plot_schmidt(SchmidtSpectrum([[1.]]);cutoffs=Float64[]) !== nothing

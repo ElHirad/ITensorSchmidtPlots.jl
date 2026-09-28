@@ -45,21 +45,15 @@ for case in (pair_example(), field_example(), random_example())
             println(io,"$k,$c,$(p.ranks[k]),$(p.discarded_weights[k]),$(p.meets_cutoff[k])")
         end
     end
-    fig=Figure(size=(1120,490),fontsize=18,
+    fig=Figure(size=(850,490),fontsize=18,
         fonts=theme_latexfonts().fonts,figure_padding=24)
-    left=GridLayout(fig[1,1])
-    right=GridLayout(fig[1,2])
-    plot_schmidt!(left,data;style=:paper2026,bond_labels=case.labels,
+    plot_schmidt!(fig[1,1],data;style=:paper2026,bond_labels=case.labels,
         color_limits=(1e-6,1.))
-    plot_schmidt!(right,data;style=:paper2022,cutoffs=[1e-4],
-        color_limits=(1e-16,1.))
-    colsize!(fig.layout,1,Relative(0.66))
-    colgap!(fig.layout,34)
     save(joinpath(out,case.name*".pdf"),fig;pt_per_unit=1)
     push!(report,"| $(case.title) | $error | $(isnothing(analytic_error) ? "—" : analytic_error) | $tail_error | $checks / $checks |")
     println(case.name,": max |Δσ| = ",error,"; tail error = ",tail_error,"; ",checks," rank checks passed")
 end
 append!(report,["", "The first example additionally agrees with the analytic product of the seven pair spectra.",
     "Values are normalized singular values (not squared probabilities). Tests also cover complex amplitudes, QN blocks, gauge changes, input preservation, zero states, rank caps, and PDF export.",
-    "These are synthetic examples, not reconstructions of the papers' DNS data."])
+    "These are synthetic examples, not reconstructions of the paper's DNS data."])
 write(joinpath(out,"VALIDATION.md"),join(report,"\n")*"\n")

@@ -34,7 +34,7 @@ function field_example()
     n = 2levels
     v = zeros(2^n)
     rng = MersenneTwister(210605782)
-    # A synthetic multiscale field, not DNS or data from either reference paper.
+    # A synthetic multiscale field, not DNS or data from the reference paper.
     modes = [(rand(rng,1:24),rand(rng,-24:24),rand(rng)*2pi,randn(rng)) for _ in 1:70]
     for bits in 0:(2^n-1)
         ix = sum(((bits >> (2j-2)) & 1) << (levels-j) for j in 1:levels)
