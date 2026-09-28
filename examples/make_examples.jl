@@ -45,22 +45,16 @@ for case in (pair_example(), field_example(), random_example())
             println(io,"$k,$c,$(p.ranks[k]),$(p.discarded_weights[k]),$(p.meets_cutoff[k])")
         end
     end
-    fig=Figure(size=(1120,680),fontsize=18,
-        fonts=(;regular="Times New Roman",bold="Times New Roman Bold"),figure_padding=24)
-    Label(fig[0,1:2],case.title;fontsize=24,font=:bold,tellwidth=false)
+    fig=Figure(size=(1120,490),fontsize=18,
+        fonts=theme_latexfonts().fonts,figure_padding=24)
     left=GridLayout(fig[1,1])
     right=GridLayout(fig[1,2])
     plot_schmidt!(left,data;style=:paper2026,bond_labels=case.labels,
-        title="(a)  Figure 6 layout",color_limits=(1e-6,1.))
+        color_limits=(1e-6,1.))
     plot_schmidt!(right,data;style=:paper2022,cutoffs=[1e-4],
-        title="(b)  Supplementary Figure 1 layout",color_limits=(1e-16,1.))
+        color_limits=(1e-16,1.))
     colsize!(fig.layout,1,Relative(0.66))
     colgap!(fig.layout,34)
-    Label(fig[2,1:2],case.description;fontsize=15,tellwidth=false)
-    Label(fig[3,1:2],L"\mathrm{Contours:}\ \sum_{j>\chi_k}\sigma_{j,k}^2/\sum_j\sigma_{j,k}^2\leq10^{-C}\quad\mathrm{(independent\ bond\ truncations)}";
-        fontsize=17,tellwidth=false)
-    Label(fig[4,1:2],"Same data in both panels; separate color ranges. Positive values below each color floor saturate; exact zeros are blank.";
-        fontsize=13,color=:gray30,tellwidth=false)
     save(joinpath(out,case.name*".pdf"),fig;pt_per_unit=1)
     push!(report,"| $(case.title) | $error | $(isnothing(analytic_error) ? "—" : analytic_error) | $tail_error | $checks / $checks |")
     println(case.name,": max |Δσ| = ",error,"; tail error = ",tail_error,"; ",checks," rank checks passed")

@@ -15,6 +15,10 @@ The presets reproduce the visual conventions, not the papers' underlying data.
 No Python, external LaTeX installation, display server, or GPU is required.
 PDF labels and contours are vectors by default; `rasterize=true` can reduce the
 size of very large heatmaps while preserving vector text and contours.
+All plots use bundled Computer Modern fonts (the New Computer Modern family),
+with LaTeX-rendered mathematical symbols and labels. The examples have no figure
+titles, panel titles, or explanatory captions; only axes, colorbars, and cutoff
+legends are included. A title is added only if you explicitly pass `title=...`.
 
 ## Installation
 
@@ -43,8 +47,7 @@ psi = random_mps(sites; linkdims=32)
 
 data = schmidt_spectrum(psi)  # Does not change psi
 save_schmidt("schmidt.pdf", data;
-    cutoffs=[1e-2, 1e-3, 1e-4, 1e-5],
-    title="Schmidt spectrum")
+    cutoffs=[1e-2, 1e-3, 1e-4, 1e-5])
 
 save_schmidt("schmidt_vertical.pdf", data;
     style=:paper2022, cutoffs=[1e-4])
@@ -125,7 +128,7 @@ fig = plot_schmidt(data;
 using CairoMakie
 save("custom.pdf", fig; pt_per_unit=1)
 
-fig = Figure(size=(1100, 500))
+fig = Figure(size=(1100, 500), fonts=theme_latexfonts().fonts)
 plot_schmidt!(fig[1,1], data; style=:paper2026)
 plot_schmidt!(fig[1,2], data; style=:paper2022, cutoffs=[1e-4])
 save("comparison.pdf", fig; pt_per_unit=1)

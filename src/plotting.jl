@@ -7,11 +7,12 @@ function _rankticks(rmax, base)
     return (Float64.(base .^ exps), [e == 0 ? L"1" : LaTeXString("$(base)^{$e}") for e in exps])
 end
 
-function _cutofflabel(c)
-    c == 0 && return "No discarded weight"
-    e = -log10(c)
-    isapprox(e, round(e); atol=1e-10) && return LaTeXString("C = $(Int(round(e)))")
-    return LaTeXString("\\epsilon = $(c)")
+function _cutofflabel(c; cap_limited=false)
+    e = iszero(c) ? Inf : -log10(c)
+    expression = isfinite(e) && isapprox(e, round(e); atol=1e-10) ?
+        "C = $(Int(round(e)))" : "\\epsilon = $(c)"
+    cap_limited && (expression *= raw"\ \mathrm{(cap\ limited)}")
+    return LaTeXString(expression)
 end
 
 """
@@ -27,6 +28,8 @@ Keywords: `bond_labels`, `title`, `color_limits` (positive singular-value bounds
 Values below `color_limits[1]` saturate at the lowest color; exact zeros are blank.
 Each rank-j cell ends at j, so a contour at χ encloses precisely χ values.
 The first cell begins at 1/2 because zero cannot appear on a log axis.
+Text uses bundled Computer Modern fonts and mathematical labels use LaTeXStrings.
+Titles are empty by default; no explanatory captions are added.
 """
 function plot_schmidt!(layout, data::SchmidtSpectrum;
         style::Symbol=:paper2026, cutoffs=10.0 .^ (-2:-1:-5),
@@ -35,7 +38,7 @@ function plot_schmidt!(layout, data::SchmidtSpectrum;
     style in (:paper2026, :paper2022) || throw(ArgumentError("style must be :paper2026 or :paper2022."))
     n = length(data.values)
     rmax = maximum(length, data.values)
-    labels = isnothing(bond_labels) ? string.(1:n) : collect(bond_labels)
+    labels = isnothing(bond_labels) ? LaTeXString.(string.(1:n)) : collect(bond_labels)
     length(labels) == n || throw(ArgumentError("Provide one bond label per internal bond ($n)."))
     cutoffs = collect(cutoffs)
     length(cutoffs) <= 4 || throw(ArgumentError("At most four cutoff curves fit the reference styles."))
@@ -49,9 +52,12 @@ function plot_schmidt!(layout, data::SchmidtSpectrum;
     cmap = horizontal ? :inferno : cgrad(
         [:red, :orange, :yellow, :springgreen, :cyan, :deepskyblue, :blue, :darkblue], 17; categorical=true)
     rankticks = _rankticks(rmax, horizontal ? 2 : 4)
+    fonts = theme_latexfonts().fonts
+    regular = fonts.regular[]
     attrs = (; title, xgridvisible=false, ygridvisible=false, xtickalign=1, ytickalign=1,
         xticksmirrored=true, yticksmirrored=true, spinewidth=1.2, titlesize=19,
-        xticklabelsize=15, yticklabelsize=15)
+        xticklabelsize=15, yticklabelsize=15, titlefont=fonts.bold[],
+        xlabelfont=regular, ylabelfont=regular, xticklabelfont=regular, yticklabelfont=regular)
     if horizontal
         ax = Axis(layout[1,1]; attrs..., xlabel=L"\mathrm{Bond}\ k", ylabel=L"\mathrm{Schmidt\ index}\ j",
             yscale=log2, xticks=(collect(1:n), labels), yticks=rankticks,
@@ -79,8 +85,7 @@ function plot_schmidt!(layout, data::SchmidtSpectrum;
     for (i,p) in enumerate(profiles)
         b = [x for k in 1:n for x in (k-0.5,k+0.5)]
         r = repeat(Float64.(p.ranks); inner=2)
-        label = _cutofflabel(p.cutoff)
-        any(!, p.meets_cutoff) && (label = string(label, " (cap limited)"))
+        label = _cutofflabel(p.cutoff; cap_limited=any(!,p.meets_cutoff))
         line = horizontal ? lines!(ax,b,r; color=:black, linewidth=2, linestyle=_LINESTYLES[i], label) :
             lines!(ax,r,b; color=:black, linewidth=2, linestyle=_LINESTYLES[i], label)
         push!(contours, line)
@@ -92,14 +97,15 @@ function plot_schmidt!(layout, data::SchmidtSpectrum;
     tickpositions = horizontal ? cticks : -cticks
     colorlabel = data.normalized ? L"\frac{\sigma_{j,k}}{\sqrt{\sum_i\sigma_{i,k}^2}}" : L"\sigma_{j,k}"
     cbattrs = (; colormap=cmap, limits=displayrange, ticks=(tickpositions,ticklabels), label=colorlabel,
-        ticklabelsize=14, labelsize=16, tickalign=1, spinewidth=1)
+        ticklabelsize=14, labelsize=16, tickalign=1, spinewidth=1,
+        ticklabelfont=regular, labelfont=regular)
     cb = horizontal ? Colorbar(layout[1,2]; cbattrs..., width=16) :
         Colorbar(layout[2,1]; cbattrs..., vertical=false, height=16, flipaxis=false)
     if legend && !isempty(contours)
         Legend(layout[horizontal ? 2 : 3,1:(horizontal ? 2 : 1)], contours,
-            [any(!,p.meets_cutoff) ? "cutoff=$(p.cutoff) (cap limited)" : _cutofflabel(p.cutoff) for p in profiles];
+            [_cutofflabel(p.cutoff; cap_limited=any(!,p.meets_cutoff)) for p in profiles];
             orientation=:horizontal, nbanks=horizontal ? 1 : 2, framevisible=false,
-            labelsize=14, patchsize=(30,14), colgap=16, rowgap=3)
+            labelsize=14, labelfont=regular, patchsize=(30,14), colgap=16, rowgap=3)
     end
     return (; axis=ax, colorbar=cb, profiles, contours)
 end
@@ -107,7 +113,7 @@ end
 """Create a Makie Figure; `size` is the figure's width and height in points at PDF export."""
 function plot_schmidt(data::SchmidtSpectrum; style::Symbol=:paper2026, size=nothing, kwargs...)
     dims = isnothing(size) ? (style == :paper2026 ? (850,430) : (430,570)) : size
-    fig = Figure(; size=dims, fontsize=18, fonts=(; regular="Times New Roman", bold="Times New Roman Bold"))
+    fig = Figure(; size=dims, fontsize=18, fonts=theme_latexfonts().fonts)
     plot_schmidt!(fig[1,1],data; style,kwargs...)
     return fig
 end
