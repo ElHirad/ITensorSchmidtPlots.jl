@@ -35,6 +35,8 @@ BLAS.set_num_threads(1)
     end
 end
 
+include("native_makie.jl")
+
 @testset "Gauge independence, raw norm, and QN blocks" begin
     sites = siteinds("Qubit",6)
     psi = random_mps(MersenneTwister(8), ComplexF64, sites; linkdims=5)

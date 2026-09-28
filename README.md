@@ -4,6 +4,11 @@ Schmidt-spectrum heatmaps and PDF export for Julia's ITensors and ITensorMPS.
 Plot normalized singular values at every MPS bond, with stepped contours showing
 the minimum retained rank for specified discarded-weight cutoffs.
 
+`schmidtplot` / `schmidtplot!` and `schmidttruncation` / `schmidttruncation!`
+are native Makie recipes: use normal Makie axes, figures, attributes, layouts,
+themes, legends, and colorbars. Numerical spectrum extraction and truncation
+analysis are separate from plotting, and accept precomputed spectra too.
+
 Two paper-inspired presets are included:
 
 | Preset | Layout | Color scale | Reference |
@@ -15,15 +20,25 @@ The presets reproduce the visual conventions, not the papers' underlying data.
 No Python, external LaTeX installation, display server, or GPU is required.
 PDF labels and contours are vectors by default; `rasterize=true` can reduce the
 size of very large heatmaps while preserving vector text and contours.
-All plots use bundled Computer Modern fonts (the New Computer Modern family),
-with LaTeX-rendered mathematical symbols and labels. The examples have no figure
+The presets and examples use bundled Computer Modern fonts (the New Computer
+Modern family), with LaTeX-rendered mathematical symbols and labels. The examples have no figure
 titles, panel titles, or explanatory captions; only axes, colorbars, and cutoff
 legends are included. A title is added only if you explicitly pass `title=...`.
 
 ## Installation
 
-Requires Julia 1.10 or later. This package is currently a local review copy and
-has **not yet been published to GitHub or registered in General**.
+Requires Julia 1.10 or later. Install directly from the public GitHub repository;
+the package is **not registered in General**:
+
+```julia
+using Pkg
+Pkg.add(url="https://github.com/ElHirad/ITensorSchmidtPlots.jl")
+```
+
+For the reproducible initial release, add `rev="v0.1.0"` to that call.
+Julia installs CairoMakie and the other dependencies automatically; the first
+import may take a few minutes. This is a standalone package and does not require
+ITensorMPSDraw or this development workspace.
 
 To install this folder, including after copying it to another computer:
 
@@ -31,11 +46,6 @@ To install this folder, including after copying it to another computer:
 using Pkg
 Pkg.develop(path="/absolute/path/to/ITensorSchmidtPlots")
 ```
-
-After the approved GitHub publication, installation will also be available by
-repository URL with `Pkg.add(url="<published repository URL>")`. The precise
-URL will be added here when the repository exists. Julia installs CairoMakie
-and the other dependencies automatically; the first import may take a few minutes.
 
 ## Quick start
 
@@ -69,7 +79,8 @@ link between neighboring tensors. Values are returned as Float64 vectors.
 
 By default, every bond's vector is normalized so `sum(abs2, s) == 1` to
 floating-point precision. Use `schmidt_spectrum(psi; normalize=false)` to retain
-the state norm. Raw values can be plotted with suitable `color_limits`.
+the state norm. Raw values can be plotted with suitable `colorrange` bounds
+(or `color_limits` in the preset helpers).
 The input tensors, site/link indices, and orthogonality metadata are preserved.
 The default `svd_alg="qr_iteration"` favors accuracy; ITensors-supported
 alternatives may be passed explicitly.
@@ -115,7 +126,75 @@ compressed MPS describe that compressed state only.
   A default 10⁻¹⁶ color floor does not establish physical accuracy to 16 digits.
 - A `maxdim` cap that misses a tolerance is marked “cap limited” in the legend.
 
-## Customization and multi-panel figures
+## Native Makie interface and customization
+
+The native recipes follow the same calling conventions as `heatmap` and `lines`:
+
+```julia
+using ITensorSchmidtPlots, CairoMakie, LaTeXStrings
+
+# `data` is the SchmidtSpectrum computed above; an MPS also works directly.
+fig, ax, hm = schmidtplot(data;
+    colormap=:inferno,
+    colorrange=(1e-8, 1.0),
+    colorscale=log10,
+    axis=(xticks=1:2:length(data.values), ylabel=L"j"),
+    figure=(size=(900, 450), fonts=theme_latexfonts().fonts))
+
+cb = Colorbar(fig[1,2], hm;
+    label=L"\sigma_{j,k}",
+    ticks=([1e-8, 1e-4, 1.0], [L"10^{-8}", L"10^{-4}", L"1"]))
+
+curve = schmidttruncation!(ax, data;
+    cutoff=1e-4, color=:cyan, linestyle=:dash, linewidth=2,
+    label=L"\epsilon = 10^{-4}")
+leg = axislegend(ax; position=:rt, framevisible=false)
+
+# Ordinary Makie changes; the linked colorbar follows the heatmap.
+hm.colormap = :viridis
+hm.colorrange = (1e-7, 1.0)
+ax.xticks = 1:length(data.values)
+curve.linewidth = 3
+save("custom.pdf", fig; pt_per_unit=1)
+```
+
+`schmidtplot(data)` returns Makie's usual `FigureAxisPlot`, which destructures
+as `(fig, ax, plot)`. `schmidtplot(fig[1,1], data)` returns `AxisPlot`, and
+`schmidtplot!(ax, data)` returns the plot and preserves your existing axis settings.
+For an existing axis, set `yscale=log2` yourself, or use `xscale=log2` for vertical
+bonds. The non-mutating recipe supplies suitable default axes automatically.
+
+| Control | Standard Makie interface |
+| --- | --- |
+| Colors | `colormap`, `colorrange`, `colorscale`, `lowclip`, `highclip`, `nan_color`, `alpha` |
+| Ticks, labels, limits, scales | `axis=(...)`, axis attributes, `limits!`, `xlims!`, `ylims!` |
+| Colorbar | `Colorbar(position, hm; ...)`, placed wherever you choose |
+| Legend | `axislegend(ax; ...)` or `Legend(position, ax; ...)`; omit to hide |
+| Truncation curves | Any number of `schmidttruncation!` calls; line colors, widths, styles, labels |
+| Orientation | `orientation=:horizontal` or `:vertical`, on both recipes |
+| PDF size and typography | `figure=(...)`, `theme_latexfonts()`, `save(...; pt_per_unit=1)` |
+| Large heatmaps | `rasterize=true`; text and curves remain vectors in PDFs |
+
+Colors and colorbar ticks are in **singular-value units**, including when the
+color scale is logarithmic. The default color range is `(1e-6, 1.0)`. Use
+`figure=(fonts=theme_latexfonts().fonts,)` or `with_theme(theme_latexfonts())` to
+give all figure text Computer Modern fonts. Use LaTeXStrings (`L"..."`) for math.
+No title, caption, legend, or colorbar is automatically added by the native recipe.
+
+For changing data, pass an `Observable(data)` to both recipes and assign a new
+`SchmidtSpectrum` to it. Ranks may change, but the number of bonds must stay the
+same; recreate the plot for a different chain length. `cutoff` and `maxdim` are
+updatable plot attributes. Axis ticks and existing legend entries follow ordinary
+Makie behavior: update ticks or rebuild a legend when its labels need to change.
+
+See [examples/native_makie.jl](examples/native_makie.jl) for a complete runnable
+example, including a separate legend and five independently styled curves.
+
+## Paper presets and multi-panel figures
+
+`plot_schmidt` (with an underscore), `plot_schmidt!`, and `save_schmidt` are
+convenience layout helpers with their own documented keywords. Use the native
+recipes above when you want unrestricted Makie composition and styling.
 
 ```julia
 fig = plot_schmidt(data;
@@ -135,7 +214,7 @@ save("comparison.pdf", fig; pt_per_unit=1)
 ```
 
 `plot_schmidt!` returns the axis, colorbar, profiles and contour plot objects for
-further Makie customization. At most four cutoff curves are supported, using
+further Makie customization. These preset helpers support at most four cutoff curves, using
 the four black line styles in the reference. Empty `cutoffs=[]` hides contours.
 `SchmidtSpectrum(vectors; normalized=true)` also accepts precomputed, sorted,
 nonnegative spectra; the constructor validates and copies the data.
@@ -161,11 +240,23 @@ layouts, plus CSVs of all coefficients and truncation ranks, and `VALIDATION.md`
 3. **Complex random state:** a seeded, normalized Gaussian state over 14 qubits,
    which provides a broad, highly entangled comparison.
 
+The reviewed examples are available as PDFs:
+[entangled pairs](docs/examples/01_entangled_pairs.pdf),
+[multiscale field](docs/examples/02_multiscale_field.pdf), and
+[complex random state](docs/examples/03_complex_random.pdf).
+Their [numerical validation report](docs/examples/VALIDATION.md) records all
+156 independently checked truncation ranks.
+
+![Entangled-pair spectra](docs/examples/01_entangled_pairs.png)
+![Multiscale-field spectra](docs/examples/02_multiscale_field.png)
+![Complex-random-state spectra](docs/examples/03_complex_random.png)
+
 Every bond is checked against an independent dense matrix SVD of the original
 vector. Every displayed cutoff rank is checked for both sufficiency and
 minimality. The tests also cover QN blocks, gauge invariance, stale gauge
 metadata, raw normalization, input preservation, invalid inputs, exact cutoff
-boundaries, rank caps, and PDF export.
+boundaries, rank caps, PDF export, native Makie composition, linked colorbars,
+legends, and reactive updates to data and plot attributes.
 
 ## License and references
 
